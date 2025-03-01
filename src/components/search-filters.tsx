@@ -52,6 +52,14 @@ export function SearchFilters() {
 		});
 	};
 
+	const validateDates = (fromDate: string, toDate: string) => {
+		if (!fromDate || !toDate) return true;
+
+		const from = new Date(fromDate);
+		const to = new Date(toDate);
+		return from <= to;
+	};
+
 	return (
 		<form
 			onSubmit={handleSubmit}
@@ -135,10 +143,20 @@ export function SearchFilters() {
 						id='fromDate'
 						type='date'
 						value={localParams.fromDate || ''}
-						onChange={(e) =>
-							setLocalParams({ ...localParams, fromDate: e.target.value })
-						}
+						onChange={(e) => {
+							const newFromDate = e.target.value;
+							if (validateDates(newFromDate, localParams.toDate || '')) {
+								setLocalParams({ ...localParams, fromDate: newFromDate });
+							} else {
+								setLocalParams({
+									...localParams,
+									fromDate: newFromDate,
+									toDate: newFromDate,
+								});
+							}
+						}}
 						className='mt-1'
+						max={localParams.toDate || undefined}
 					/>
 				</div>
 
@@ -150,10 +168,14 @@ export function SearchFilters() {
 						id='toDate'
 						type='date'
 						value={localParams.toDate || ''}
-						onChange={(e) =>
-							setLocalParams({ ...localParams, toDate: e.target.value })
-						}
+						onChange={(e) => {
+							const newToDate = e.target.value;
+							if (validateDates(localParams.fromDate || '', newToDate)) {
+								setLocalParams({ ...localParams, toDate: newToDate });
+							}
+						}}
 						className='mt-1'
+						min={localParams.fromDate || undefined}
 					/>
 				</div>
 

@@ -28,7 +28,6 @@ export default function Home() {
 			setLoading(true);
 			try {
 				const params = { ...searchParams };
-
 				let fetchedArticles: Article[] = [];
 
 				if (params.source) {
@@ -49,8 +48,10 @@ export default function Home() {
 					fetchedArticles = await fetchAllArticles(params);
 				}
 
+				// Process the articles with filters
 				let filteredArticles = [...fetchedArticles];
 
+				// Apply user preferences if they exist
 				const shouldFilterByPreferredSources =
 					userPreferences.preferredSources.length > 0;
 				const shouldFilterByPreferredCategories =
@@ -64,11 +65,9 @@ export default function Home() {
 						const matchesSource =
 							!shouldFilterByPreferredSources ||
 							userPreferences.preferredSources.includes(article.source);
-
 						const matchesCategory =
 							!shouldFilterByPreferredCategories ||
 							userPreferences.preferredCategories.includes(article.category);
-
 						return matchesSource && matchesCategory;
 					});
 				}
@@ -77,6 +76,27 @@ export default function Home() {
 					filteredArticles = filteredArticles.filter(
 						(article) => article.category === params.category
 					);
+				}
+
+				if (params.fromDate || params.toDate) {
+					filteredArticles = filteredArticles.filter((article) => {
+						const articleDate = new Date(article.publishedAt);
+						let withinRange = true;
+
+						if (params.fromDate) {
+							const fromDate = new Date(params.fromDate);
+							fromDate.setHours(0, 0, 0, 0);
+							withinRange = withinRange && articleDate >= fromDate;
+						}
+
+						if (params.toDate) {
+							const toDate = new Date(params.toDate);
+							toDate.setHours(23, 59, 59, 999);
+							withinRange = withinRange && articleDate <= toDate;
+						}
+
+						return withinRange;
+					});
 				}
 
 				console.log(
