@@ -48,10 +48,8 @@ export default function Home() {
 					fetchedArticles = await fetchAllArticles(params);
 				}
 
-				// Process the articles with filters
 				let filteredArticles = [...fetchedArticles];
 
-				// Apply user preferences if they exist
 				const shouldFilterByPreferredSources =
 					userPreferences.preferredSources.length > 0;
 				const shouldFilterByPreferredCategories =
