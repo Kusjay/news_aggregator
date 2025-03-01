@@ -1,5 +1,9 @@
 import axios from 'axios';
 import { Article, SearchParams } from './types';
+import {
+	getApiSpecificCategory,
+	mapToStandardCategory,
+} from '../utils/categoryMapping';
 
 const API_KEY = process.env.NEXT_PUBLIC_NYTIMES_API_KEY || '';
 const BASE_URL = 'https://api.nytimes.com/svc/search/v2/articlesearch.json';
@@ -10,15 +14,17 @@ export async function fetchNyTimesArticles(
 	params: SearchParams
 ): Promise<Article[]> {
 	try {
-		// Build URL with query parameters in the format shown in the example
-		let url = BASE_URL;
 		const queryParams = new URLSearchParams({
 			'api-key': API_KEY,
 		});
 
-		// Add search query if provided, otherwise use most popular endpoint
-		if (params.query) {
-			queryParams.append('q', params.query);
+		const useSearchApi =
+			params.query || params.category || params.fromDate || params.toDate;
+
+		if (useSearchApi) {
+			if (params.query) {
+				queryParams.append('q', params.query);
+			}
 
 			if (params.fromDate) {
 				queryParams.append('begin_date', params.fromDate.replace(/-/g, ''));
@@ -35,10 +41,15 @@ export async function fetchNyTimesArticles(
 			queryParams.append('sort', 'newest');
 
 			if (params.category) {
-				queryParams.append('fq', `news_desk:(${params.category})`);
+				const nytCategory = getApiSpecificCategory(params.category, 'nytimes');
+				if (nytCategory) {
+					queryParams.append('fq', `section_name:"${nytCategory}"`);
+				}
 			}
 
-			url = `${BASE_URL}?${queryParams.toString()}`;
+			const url = `${BASE_URL}?${queryParams.toString()}`;
+			console.log('NYT Search URL:', url);
+
 			const response = await axios.get(url);
 
 			return response.data.response.docs.map(
@@ -55,9 +66,7 @@ export async function fetchNyTimesArticles(
 					section_name: string;
 					news_desk: string;
 				}) => ({
-					id: `nyt-${article._id}-${Math.random()
-						.toString(36)
-						.substring(2, 8)}`,
+					id: `nyt-${article._id}`,
 					title: article.headline.main,
 					description: article.abstract || article.snippet,
 					content: article.lead_paragraph || '',
@@ -69,12 +78,16 @@ export async function fetchNyTimesArticles(
 						? `https://www.nytimes.com/${article.multimedia[0].url}`
 						: '',
 					publishedAt: article.pub_date,
-					category: article.section_name || article.news_desk || 'General',
+					category: mapToStandardCategory(
+						article.section_name || article.news_desk,
+						'New York Times'
+					),
 				})
 			);
 		} else {
-			// If no query is provided, fetch most popular articles instead
-			url = `${MOST_POPULAR_URL}?${queryParams.toString()}`;
+			const url = `${MOST_POPULAR_URL}?${queryParams.toString()}`;
+			console.log('NYT Popular URL:', url);
+
 			const response = await axios.get(url);
 
 			return response.data.results.map(
@@ -88,9 +101,7 @@ export async function fetchNyTimesArticles(
 					published_date: string;
 					section: string;
 				}) => ({
-					id: `nyt-popular-${article.id}-${Math.random()
-						.toString(36)
-						.substring(2, 8)}`,
+					id: `nyt-popular-${article.id}`,
 					title: article.title,
 					description: article.abstract,
 					content: article.abstract,
@@ -99,7 +110,7 @@ export async function fetchNyTimesArticles(
 					url: article.url,
 					imageUrl: article.media?.[0]?.['media-metadata']?.[2]?.url || '',
 					publishedAt: article.published_date,
-					category: article.section || 'General',
+					category: mapToStandardCategory(article.section, 'New York Times'),
 				})
 			);
 		}

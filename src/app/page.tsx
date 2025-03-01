@@ -1,10 +1,15 @@
 'use client';
-
 import { NewsGrid } from '@/components/news-grid';
 import { Pagination } from '@/components/pagination';
 import { SearchFilters } from '@/components/search-filters';
 import { UserPreferences } from '@/components/user-preferences';
-import { fetchAllArticles } from '@/lib/api';
+import {
+	fetchAllArticles,
+	fetchGuardianArticles,
+	fetchNewsApiArticles,
+	fetchNyTimesArticles,
+} from '@/lib/api';
+import { Article } from '@/lib/api/types';
 import { useNewsStore } from '@/lib/store/useNewsStore';
 import { useEffect } from 'react';
 
@@ -24,18 +29,66 @@ export default function Home() {
 			try {
 				const params = { ...searchParams };
 
-				if (!params.query && !params.category && !params.source) {
-					if (userPreferences.preferredSources.length > 0) {
-						params.source = userPreferences.preferredSources[0];
-					}
+				let fetchedArticles: Article[] = [];
 
-					if (userPreferences.preferredCategories.length > 0) {
-						params.category = userPreferences.preferredCategories[0];
+				if (params.source) {
+					switch (params.source) {
+						case 'NewsAPI':
+							fetchedArticles = await fetchNewsApiArticles(params);
+							break;
+						case 'The Guardian':
+							fetchedArticles = await fetchGuardianArticles(params);
+							break;
+						case 'New York Times':
+							fetchedArticles = await fetchNyTimesArticles(params);
+							break;
+						default:
+							fetchedArticles = await fetchAllArticles(params);
 					}
+				} else {
+					fetchedArticles = await fetchAllArticles(params);
 				}
 
-				const fetchedArticles = await fetchAllArticles(params);
-				setArticles(fetchedArticles);
+				let filteredArticles = [...fetchedArticles];
+
+				const shouldFilterByPreferredSources =
+					userPreferences.preferredSources.length > 0;
+				const shouldFilterByPreferredCategories =
+					userPreferences.preferredCategories.length > 0;
+
+				if (
+					shouldFilterByPreferredSources ||
+					shouldFilterByPreferredCategories
+				) {
+					filteredArticles = filteredArticles.filter((article) => {
+						const matchesSource =
+							!shouldFilterByPreferredSources ||
+							userPreferences.preferredSources.includes(article.source);
+
+						const matchesCategory =
+							!shouldFilterByPreferredCategories ||
+							userPreferences.preferredCategories.includes(article.category);
+
+						return matchesSource && matchesCategory;
+					});
+				}
+
+				if (params.category) {
+					filteredArticles = filteredArticles.filter(
+						(article) => article.category === params.category
+					);
+				}
+
+				console.log(
+					`Showing ${filteredArticles.length} of ${fetchedArticles.length} articles after filtering`
+				);
+
+				if (filteredArticles.length === 0 && fetchedArticles.length > 0) {
+					console.log('No articles matched filters, showing all articles');
+					filteredArticles = fetchedArticles;
+				}
+
+				setArticles(filteredArticles);
 			} catch (error) {
 				console.error('Failed to fetch articles:', error);
 			} finally {

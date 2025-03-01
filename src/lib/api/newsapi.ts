@@ -8,16 +8,29 @@ export async function fetchNewsApiArticles(
 	params: SearchParams
 ): Promise<Article[]> {
 	try {
-		const response = await axios.get(`${BASE_URL}/everything`, {
-			params: {
-				q: params.query || 'technology',
-				from: params.fromDate,
-				to: params.toDate,
-				sortBy: 'publishedAt',
-				pageSize: params.pageSize || 10,
-				page: params.page || 1,
-				apiKey: API_KEY,
-			},
+		const endpoint = params.category ? 'top-headlines' : 'everything';
+
+		const requestParams: Record<string, string | number | undefined> = {
+			apiKey: API_KEY,
+			pageSize: params.pageSize || 10,
+			page: params.page || 1,
+		};
+
+		if (endpoint === 'top-headlines') {
+			requestParams.category = params.category?.toLowerCase();
+
+			if (!params.category) requestParams.country = 'us';
+
+			if (params.query) requestParams.q = params.query;
+		} else {
+			requestParams.q = params.query || 'news';
+			requestParams.sortBy = 'publishedAt';
+			if (params.fromDate) requestParams.from = params.fromDate;
+			if (params.toDate) requestParams.to = params.toDate;
+		}
+
+		const response = await axios.get(`${BASE_URL}/${endpoint}`, {
+			params: requestParams,
 		});
 
 		return response.data.articles.map(
@@ -35,14 +48,14 @@ export async function fetchNewsApiArticles(
 					article.publishedAt
 				).getTime()}`,
 				title: article.title,
-				description: article.description,
-				content: article.content,
+				description: article.description || '',
+				content: article.content || '',
 				author: article.author || 'Unknown',
 				source: article.source.name,
 				url: article.url,
-				imageUrl: article.urlToImage,
+				imageUrl: article.urlToImage || '',
 				publishedAt: article.publishedAt,
-				category: 'General',
+				category: params.category || 'General',
 			})
 		);
 	} catch (error) {

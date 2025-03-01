@@ -47,15 +47,6 @@ export function ArticleCard({ article }: ArticleCardProps) {
 			</CardHeader>
 			{article.imageUrl && (
 				<div className='px-4 relative h-48 w-full overflow-hidden'>
-					{/* <Image
-						src={article.imageUrl}
-						alt={article.title}
-						fill
-						className='object-cover rounded-md'
-						onError={(e) => {
-							(e.target as HTMLImageElement).src = '/placeholder-image.jpg';
-						}}
-					/> */}
 					<Image
 						src={article.imageUrl}
 						alt={article.title}

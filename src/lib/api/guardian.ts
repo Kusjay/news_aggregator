@@ -1,5 +1,9 @@
 import axios from 'axios';
 import { Article, SearchParams } from './types';
+import {
+	getApiSpecificCategory,
+	mapToStandardCategory,
+} from '../utils/categoryMapping';
 
 const API_KEY = process.env.NEXT_PUBLIC_GUARDIAN_API_KEY || '';
 const BASE_URL = 'https://content.guardianapis.com/search';
@@ -8,21 +12,28 @@ export async function fetchGuardianArticles(
 	params: SearchParams
 ): Promise<Article[]> {
 	try {
-		// Build query parameters directly in the URL format
 		const queryParams = new URLSearchParams({
 			'api-key': API_KEY,
-			q: params.query || '',
-			page: (params.page || 1).toString(),
-			'page-size': (params.pageSize || 10).toString(),
 			'show-fields': 'all',
+			'page-size': (params.pageSize || 10).toString(),
+			page: (params.page || 1).toString(),
 		});
 
-		// Add optional parameters only if they exist
-		if (params.category) queryParams.append('section', params.category);
+		if (params.query) queryParams.append('q', params.query);
+
+		if (params.category) {
+			const guardianCategory = getApiSpecificCategory(
+				params.category,
+				'guardian'
+			);
+			if (guardianCategory) {
+				queryParams.append('section', guardianCategory);
+			}
+		}
+
 		if (params.fromDate) queryParams.append('from-date', params.fromDate);
 		if (params.toDate) queryParams.append('to-date', params.toDate);
 
-		// Make the request with the URL and parameters appended
 		const url = `${BASE_URL}?${queryParams.toString()}`;
 		const response = await axios.get(url);
 
@@ -49,7 +60,7 @@ export async function fetchGuardianArticles(
 				url: article.webUrl,
 				imageUrl: article.fields?.thumbnail || '',
 				publishedAt: article.webPublicationDate,
-				category: article.sectionName,
+				category: mapToStandardCategory(article.sectionName, 'The Guardian'),
 			})
 		);
 	} catch (error) {

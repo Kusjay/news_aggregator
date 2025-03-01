@@ -21,6 +21,9 @@ const categories = [
 	'Science',
 	'Sports',
 	'Technology',
+	'Politics',
+	'Lifestyle',
+	'Opinion',
 ];
 
 const sources = ['All Sources', 'NewsAPI', 'The Guardian', 'New York Times'];
